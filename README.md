@@ -1,5 +1,6 @@
-# EPGSHERE01 INDIA
+# EPGSHERE01 EPG URL ( Electric Programs Guide)
 
+India TV Channels Code & Epg
 IN1,IN2,IN4.
 
 ```
