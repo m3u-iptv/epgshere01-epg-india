@@ -1,0 +1,78 @@
+name: Auto Update IN EPG
+
+on:
+  schedule:
+    # Rozana subah 6:00 AM IST (00:30 UTC) par chalega
+    - cron: '30 0 * * *'
+  workflow_dispatch: # Manual chalane ke liye button
+
+permissions:
+  contents: write
+
+jobs:
+  filter-epg:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download, Filter and Compress EPG
+        run: |
+          # Teeno files (IN1, IN2, IN4) download aur extract karein
+          for code in IN1 IN2 IN4; do
+            curl -s -L "https://epgshare01.online{code}.xml.gz" -o "${code}.xml.gz"
+            gunzip -f "${code}.xml.gz"
+          done
+          
+          python3 -c '
+          import xml.etree.ElementTree as ET
+          
+          # Yahan IN1, IN2, aur IN4 ke sabhi zaroori channel IDs daalein
+          target_ids = {
+              "Goldmines.Movie.Today.in2",
+              "SONY.MAX1",
+              "Sony.MAX2.in",
+              "MAX.HD.in",
+              "Sony.Max.SD.in",
+              "SONY.PAL.in",
+              "SONY.WAH.in",
+              # Baki channels ki IDs yahan comma laga kar add karein
+          }
+          
+          files = ["IN1.xml", "IN2.xml", "IN4.xml"]
+          new_root = None
+          added_channels = set()
+          
+          for file in files:
+              tree = ET.parse(file)
+              root = tree.getroot()
+              
+              if new_root is None:
+                  new_root = ET.Element("tv", root.attrib)
+                  
+              for ch in root.findall("channel"):
+                  ch_id = ch.get("id")
+                  if ch_id in target_ids and ch_id not in added_channels:
+                      new_root.append(ch)
+                      added_channels.add(ch_id)
+                      
+              for prog in root.findall("programme"):
+                  if prog.get("channel") in target_ids:
+                      new_root.append(prog)
+                  
+          new_tree = ET.ElementTree(new_root)
+          ET.indent(new_tree, space="  ")
+          new_tree.write("epg.xml", encoding="utf-8", xml_declaration=True)
+          '
+          
+          # Temporary files hatayein aur epg.xml ko epg.xml.gz mein compress karein
+          rm -f IN1.xml IN2.xml IN4.xml
+          gzip -f epg.xml
+
+      - name: Save and Push Filtered EPG
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add epg.xml.gz
+          git commit -m "Update EPG channels" || exit 0
+          git push
