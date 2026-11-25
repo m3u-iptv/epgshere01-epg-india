@@ -18,11 +18,11 @@ jobs:
 
       - name: Download, Filter and Compress EPG
         run: |
-          # Teeno files (IN1, IN2, IN4) download aur extract karein
-          for code in IN1 IN2 IN4; do
-            curl -s -L "https://epgshare01.online{code}.xml.gz" -o "${code}.xml.gz"
-            gunzip -f "${code}.xml.gz"
-          done
+          curl -s -L "https://epgshare01.online/epgshare01/epg_ripper_IN1.xml.gz" -o IN1.xml.gz
+          curl -s -L "https://epgshare01.online/epgshare01/epg_ripper_IN2.xml.gz" -o IN2.xml.gz
+          curl -s -L "https://epgshare01.online/epgshare01/epg_ripper_IN4.xml.gz" -o IN4.xml.gz
+
+          gunzip -f IN1.xml.gz IN2.xml.gz IN4.xml.gz
           
           python3 -c '
           import xml.etree.ElementTree as ET
@@ -36,7 +36,7 @@ jobs:
               "Sony.Max.SD.in",
               "SONY.PAL.in",
               "SONY.WAH.in",
-              # Baki channels ki IDs yahan comma laga kar add karein
+              # IN2 aur IN4 ke channel IDs yahan add karein
           }
           
           files = ["IN1.xml", "IN2.xml", "IN4.xml"]
@@ -65,14 +65,13 @@ jobs:
           new_tree.write("epg.xml", encoding="utf-8", xml_declaration=True)
           '
           
-          # Temporary files hatayein aur epg.xml ko epg.xml.gz mein compress karein
           rm -f IN1.xml IN2.xml IN4.xml
           gzip -f epg.xml
 
       - name: Save and Push Filtered EPG
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "github-actions[bot]@://github.com"
           git add epg.xml.gz
           git commit -m "Update EPG channels" || exit 0
           git push
